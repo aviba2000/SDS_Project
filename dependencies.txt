@@ -1,0 +1,47 @@
+# Mininet & Ryu
+# MAKE sure to use ubuntu 20 LTS!
+cd
+sudo apt install -y mininet xterm
+echo “xterm*font: *-fixed-*-*-*-18-*” > .Xresources
+xrdb -merge ~/.Xresources
+
+sudo apt install -y git
+git clone https://github.com/mininet/mininet
+sudo mininet/util/install.sh -fw
+sudo apt install -y python3-dev python3-setuptools python3-pip
+sudo pip3 uninstall eventlet
+sudo pip3 install eventlet==0.30.2
+git clone https://github.com/osrg/ryu.git
+cd ryu 
+sudo pip3 install ryu
+sudo pip3 install mininet
+
+# InfluxDB
+cd
+wget https://dl.influxdata.com/influxdb/releases/influxdb_1.8.4_amd64.deb
+sudo dpkg -i influxdb_1.8.4_amd64.deb
+sudo apt update
+sudo apt install -yq python3-influxdb
+rm influxdb_1.8.4_amd64.deb
+
+sudo systemctl start influxdb
+#influx
+#influx> show databases
+
+# Telegraf
+wget https://dl.influxdata.com/telegraf/releases/telegraf_1.17.3-1_amd64.deb
+sudo dpkg -i telegraf_1.17.3-1_amd64.deb
+rm telegraf_1.17.3-1_amd64.deb
+sudo mv /etc/telegraf/telegraf.conf /etc/telegraf/telegraf.conf.bup
+# replace /etc/telegraf/telegraf.conf with file
+
+sudo systemctl restart telegraf
+#influx
+#influx> show databases
+#influx> use RYU
+
+# SSH, Worm
+# Install these packages on you machine so that mininet hosts can use them
+sudo apt install openssh-server 
+sudo apt-get install sshpass
+

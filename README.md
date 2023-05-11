@@ -20,7 +20,7 @@ sudo pip3 install eventlet==0.30.2
 
 ### SSH
 ```
-sudo apt install openssh-server 
+sudo apt install openssh-server sshpass
 ```
 
 

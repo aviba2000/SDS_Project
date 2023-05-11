@@ -24,21 +24,12 @@ sudo apt update
 sudo apt install -yq python3-influxdb
 rm influxdb_1.8.4_amd64.deb
 
-sudo systemctl start influxdb
-#influx
-#influx> show databases
-
 # Telegraf
 wget https://dl.influxdata.com/telegraf/releases/telegraf_1.17.3-1_amd64.deb
 sudo dpkg -i telegraf_1.17.3-1_amd64.deb
 rm telegraf_1.17.3-1_amd64.deb
 sudo mv /etc/telegraf/telegraf.conf /etc/telegraf/telegraf.conf.bup
-# replace /etc/telegraf/telegraf.conf with file
-
-sudo systemctl restart telegraf
-#influx
-#influx> show databases
-#influx> use RYU
+# replace /etc/telegraf/telegraf.conf with telegraf.conf file
 
 # SSH, Worm
 # Install these packages on you machine so that mininet hosts can use them

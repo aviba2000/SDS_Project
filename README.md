@@ -37,6 +37,11 @@ sudo python3 topology.py
 sudo ryu-manager log_packets.py
 ```
 
+Start the worm:
+```
+h2 ./brute_force_ssh.sh
+```
+
 ### Show influxdb packets
 Access influxdb:
 

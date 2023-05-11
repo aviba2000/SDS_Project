@@ -33,8 +33,9 @@ for h in net.hosts:
 	h.cmd("sysctl -w net.ipv6.conf.all.disable_ipv6=1")
 
 # We start ssh server in h1, you need OpenSSH-server installed in your machine
-h1.cmd('[ ! -d "/run/sshd" ] && mkdir /run/sshd && chmod 0755 /run/sshd')
-h1.cmd("/usr/sbin/sshd -D &")
+for h in net.hosts:
+	h.cmd('[ ! -d "/run/sshd" ] && mkdir /run/sshd && chmod 0755 /run/sshd')
+	h.cmd("/usr/sbin/sshd -D &")
 
 
 net.start()

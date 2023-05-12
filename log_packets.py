@@ -10,19 +10,33 @@ from operator import attrgetter
 from ryu.app import simple_switch_13
 from ryu.lib import hub
 from ryu.lib.packet import ether_types
+from ryu.lib import snortlib
 
 import socket
 import datetime
+import array
 
 UDP_IP = "127.0.0.1"
 UDP_PORT = 8094
 
 class LogPackets(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
+    _CONTEXTS = {'snortlib': snortlib.SnortLib}
 
     def __init__(self, *args, **kwargs):
         super(LogPackets, self).__init__(*args, **kwargs)
+        self.snort = kwargs['snortlib']
+        self.snort_port = 4
         self.mac_to_port = {}
+        socket_config = {'unixsock': True}
+        self.snort.set_config(socket_config)
+        self.snort.start_socket_server()
+
+    @set_ev_cls(snortlib.EventAlert, MAIN_DISPATCHER)
+    def _dump_alert(self, ev):
+        msg = ev.msg
+
+        print('alertmsg: %s' % msg.alertmsg[0].decode())
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -128,7 +142,7 @@ class LogPackets(app_manager.RyuApp):
         else:
             out_port = ofproto.OFPP_FLOOD
 
-        actions = [parser.OFPActionOutput(out_port)]
+        actions = [parser.OFPActionOutput(out_port), parser.OFPActionOutput(self.snort_port)]
 
         # install a flow to avoid packet_in next time
         if out_port != ofproto.OFPP_FLOOD:

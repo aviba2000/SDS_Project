@@ -1,0 +1,1 @@
+alert tcp any any -> 10.0.0.1 22 (msg:"SSH attempt"; sid:1000001)

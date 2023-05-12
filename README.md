@@ -18,6 +18,13 @@ sudo pip3 uninstall eventlet
 sudo pip3 install eventlet==0.30.2
 ```
 
+### Snort
+```
+sudo apt install snort
+sudo ip link add name s1-snort type dummy
+sudo ip link set s1-snort up
+```
+
 ### SSH
 ```
 sudo apt install openssh-server sshpass
@@ -35,6 +42,22 @@ Run the controller and the topology:
 ```
 sudo python3 topology.py
 sudo ryu-manager log_packets.py
+```
+
+Set up Snort:
+```
+cp honeypot.rules /etc/snort/rules
+```
+
+Modify /etc/snort/snort.conf and add include $RULE_PATH/honeypot.rules.
+
+```
+sudo ovs-vsctl add-port s1 s1-snort
+```
+
+Run Snort:
+```
+sudo snort -i s1-snort -A unsock -l /tmp -c /etc/snort/snort.conf
 ```
 
 Start the worm:

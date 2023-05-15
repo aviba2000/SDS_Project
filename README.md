@@ -4,32 +4,11 @@
 
 Use ubuntu 20.04!
 
-### Xterm
+Execute the setup script:
+```bash
+chmod +x setup.sh
+sudo setup.sh
 ```
-sudo apt install -y xterm
-echo “xterm*font: *-fixed-*-*-*-19-*” > .Xresources
-xrdb -merge ~/.Xresources
-```
-
-### Mininet and Ryu
-```
-sudo pip3 install ryu mininet
-sudo pip3 uninstall eventlet
-sudo pip3 install eventlet==0.30.2
-```
-
-### Snort
-```
-sudo apt install snort
-sudo ip link add name s1-snort type dummy
-sudo ip link set s1-snort up
-```
-
-### SSH
-```
-sudo apt install openssh-server sshpass
-```
-
 
 ## How to run
 First, set up telegraf and influxdb:

@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Create test user
+USERNAME="test"
+PASSWORD="test"
+useradd -m -p $(openssl passwd -1 $PASSWORD) $USERNAME
+
 # Check if Docker is installed
 if ! command -v docker &> /dev/null
 then

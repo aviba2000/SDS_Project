@@ -16,8 +16,13 @@ import socket
 import datetime
 import array
 
+# Telegraph server
 UDP_IP = "127.0.0.1"
 UDP_PORT = 8094
+
+# Snort alerts
+# alert tcp any any -> 10.0.0.1 22 (msg:"SSH attempt"; sid:1000001)
+SSH_ALERT = "SSH attempt"
 
 class LogPackets(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
@@ -35,8 +40,9 @@ class LogPackets(app_manager.RyuApp):
     @set_ev_cls(snortlib.EventAlert, MAIN_DISPATCHER)
     def _dump_alert(self, ev):
         msg = ev.msg
+        time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        print('alertmsg: %s' % msg.alertmsg[0].decode())
+        print('[%s] alertmsg: %s' % (time, msg.alertmsg[0].decode()))
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -189,6 +195,9 @@ class LogPackets(app_manager.RyuApp):
         timestamp = int(datetime.datetime.now().timestamp() * 1000000000)
         msg = PACKET_MSG % (dpid, src_addr, src_port, dst_addr, dst_port, timestamp)
 
-        self.logger.info(msg)
+        #############################
+        # Send the packet to Telegraf.
+        #############################
+        # self.logger.info(msg)
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.sendto(msg.encode(), (UDP_IP, UDP_PORT))

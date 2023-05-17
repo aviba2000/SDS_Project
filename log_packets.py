@@ -3,18 +3,14 @@
 from ryu.controller import ofp_event
 from ryu.controller.handler import MAIN_DISPATCHER, CONFIG_DISPATCHER, DEAD_DISPATCHER
 from ryu.controller.handler import set_ev_cls
-from ryu.lib.packet import packet, ipv4, ipv6, tcp, udp, ethernet, icmp
+from ryu.lib.packet import packet, ipv4, tcp, udp, ethernet
 from ryu.base import app_manager
 from ryu.ofproto import ofproto_v1_3
-from operator import attrgetter
-from ryu.app import simple_switch_13
-from ryu.lib import hub
 from ryu.lib.packet import ether_types
 from ryu.lib import snortlib
 
 import socket
 import datetime
-import array
 
 # Telegraph server
 UDP_IP = "127.0.0.1"
@@ -30,23 +26,54 @@ class LogPackets(app_manager.RyuApp):
 
     def __init__(self, *args, **kwargs):
         super(LogPackets, self).__init__(*args, **kwargs)
+
+        # Switch MAC HOST <-> Port table
+        self.mac_to_port = {}
+
+        # Switch MAC PORT <-> Port number table
+        self.port_datapath_to_port = {}
+        
+        # Datapaths
+        self.datapaths = {}
+
+        # Snort conf
         self.snort = kwargs['snortlib']
         self.snort_port = 4
-        self.mac_to_port = {}
         socket_config = {'unixsock': True}
         self.snort.set_config(socket_config)
         self.snort.start_socket_server()
 
     @set_ev_cls(snortlib.EventAlert, MAIN_DISPATCHER)
     def _dump_alert(self, ev):
+        print('[DEBUG] _dump_alert()')
         msg = ev.msg
         time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         print('[%s] alertmsg: %s' % (time, msg.alertmsg[0].decode()))
+    
+    def disable_port(self, port_no, datapath):
+        ofp = datapath.ofproto
+        ofp_parser = datapath.ofproto_parser
+
+        # Get MAC from datapath ports
+        hw_addr = datapath.ports[port_no].hw_addr
+        print(f'==> Disabling port {port_no} with MAC {hw_addr}')
+
+        config = ofp.OFPPC_PORT_DOWN
+        mask = ofp.OFPPC_PORT_DOWN
+        advertise = 0
+        req = ofp_parser.OFPPortMod(datapath, port_no, hw_addr, config, mask, advertise)
+        datapath.send_msg(req)
+        return
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         datapath = ev.msg.datapath
+        
+        # Save datapaths
+        self.logger.debug("==> Saving datapath %d" % datapath.id)
+        self.datapaths[datapath.id] = datapath
+
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
 
@@ -75,6 +102,7 @@ class LogPackets(app_manager.RyuApp):
         else:
             mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
                                     match=match, instructions=inst)
+        
         datapath.send_msg(mod)
 
     def create_match(self, datapath, in_port, pkt):
@@ -174,9 +202,11 @@ class LogPackets(app_manager.RyuApp):
         self.store_packet(ev)
 
     def store_packet(self, ev):
-        PACKET_MSG = 'unhandled_packets,switch_id=%d src_addr="%s",src_port=%d,dst_addr="%s",dst_port=%d %d'
+        PACKET_MSG = 'unhandled_packets,switch_id=%d src_mac="%s",src_addr="%s",src_port=%d,dst_mac="%s",dst_addr="%s",dst_port=%d %d'
+
         pkt = packet.Packet(ev.msg.data)
         
+        eth_pkt = pkt.get_protocol(ethernet.ethernet)
         ipv4_pkt = pkt.get_protocol(ipv4.ipv4)
         tcp_pkt = pkt.get_protocol(tcp.tcp)
         udp_pkt = pkt.get_protocol(udp.udp) # SSH may sometimes be run using UDP.
@@ -187,13 +217,15 @@ class LogPackets(app_manager.RyuApp):
             return
 
         dpid = ev.msg.datapath.id
+        src_mac = eth_pkt.src
         src_addr = ipv4_pkt.src
         dst_addr = ipv4_pkt.dst
+        dst_mac = eth_pkt.dst
         src_port = tcp_pkt.src_port if tcp_pkt else udp_pkt.src_port
         dst_port = tcp_pkt.dst_port if tcp_pkt else udp_pkt.dst_port
 
         timestamp = int(datetime.datetime.now().timestamp() * 1000000000)
-        msg = PACKET_MSG % (dpid, src_addr, src_port, dst_addr, dst_port, timestamp)
+        msg = PACKET_MSG % (dpid, src_mac, src_addr, src_port, dst_mac, dst_addr, dst_port, timestamp)
 
         #############################
         # Send the packet to Telegraf.

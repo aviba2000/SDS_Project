@@ -9,6 +9,9 @@ from ryu.ofproto import ofproto_v1_3
 from ryu.lib.packet import ether_types
 from ryu.lib import snortlib
 
+from influxdb import InfluxDBClient
+import datetime
+
 import socket
 import datetime
 
@@ -31,7 +34,15 @@ class LogPackets(app_manager.RyuApp):
         self.mac_to_port = {}
 
         # Switch MAC PORT <-> Port number table
-        self.port_datapath_to_port = {}
+        # Don't do on production!
+        self.ip_to_datapath_and_port = {
+            '10.0.0.1': {'datapath': 1, 'port': 1, 'mac': '00:00:00:00:00:01'},
+            '10.0.0.2': {'datapath': 1, 'port': 2, 'mac': '00:00:00:00:00:02'},
+            '10.0.0.3': {'datapath': 2, 'port': 1, 'mac': '00:00:00:00:00:03'},
+            '10.0.0.4': {'datapath': 2, 'port': 2, 'mac': '00:00:00:00:00:04'},
+            '10.0.0.5': {'datapath': 3, 'port': 1, 'mac': '00:00:00:00:00:05'},
+            '10.0.0.6': {'datapath': 3, 'port': 2, 'mac': '00:00:00:00:00:06'},
+        }
         
         # Datapaths
         self.datapaths = {}
@@ -48,6 +59,23 @@ class LogPackets(app_manager.RyuApp):
         print('[DEBUG] _dump_alert()')
         msg = ev.msg
         time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        ##############################################
+        # Create Traceback
+        # traceAlgorithm = TraceBack("10.0.0.1")
+        # test = traceAlgorithm.get_last_connection()
+        ##############################################
+
+        infected_hosts = ['10.0.0.1', '10.0.0.3']
+
+        for host in infected_hosts:
+            object = self.ip_to_datapath_and_port[host]
+
+            datapath_id = object['datapath']
+            datapath = self.datapaths[datapath_id]
+            port = object['port']
+
+            self.disable_port(port, datapath=datapath)
 
         print('[%s] alertmsg: %s' % (time, msg.alertmsg[0].decode()))
     
@@ -233,3 +261,92 @@ class LogPackets(app_manager.RyuApp):
         # self.logger.info(msg)
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.sendto(msg.encode(), (UDP_IP, UDP_PORT))
+
+
+# Create a Traceback class to store the traceback information.
+class TraceBack():
+    def __init__(self, attacker_ip):
+        self.client = self.setup_client()
+        self.attacker_ip = attacker_ip
+        self.connections = [] 
+
+    def setup_client(self):
+        # Set up a client object
+        client = InfluxDBClient(host='localhost', port=8086)
+
+        # Use RYU as the database
+        client.switch_database('RYU')
+
+        return client
+    
+    def get_last_connection(self):
+        # Current time with python datetime
+        current_time = datetime.datetime.now()
+        time_str = current_time.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+        query = '''
+            SELECT *
+            FROM unhandled_packets
+            WHERE time < '{}'
+            AND dst_port = 22
+        '''.format(time_str)
+
+        result = self.client.query(query)
+
+        # One line for 
+        # Convert to list from result generator
+        flows = []
+        for point in result.get_points():
+            flows.append(point)
+
+        unique_flows = self.get_unique_connections(flows)
+        infected_addrs = self.traceback(unique_flows)
+        
+        return infected_addrs
+    
+    def get_unique_connections(self, connections):
+        unique_flows = set()
+        for point in connections:
+            dst_addr = point["dst_addr"]
+            src_addr = point["src_addr"]
+
+            unique_flows.add(
+                (dst_addr, src_addr)
+            )
+
+        # Conver set to array of dictionary
+        unique_list = []
+        for flow in unique_flows:
+            unique_list.append({
+                "dst_addr": flow[0],
+                "src_addr": flow[1]
+            })
+        return unique_list
+    
+    # From:
+    #  connections = [
+    #     {'src_addr': '10.0.0.2', 'dst_addr': '10.0.0.3'},
+    #     {'src_addr': '10.0.0.3', 'dst_addr': '10.0.0.5'},
+    #     {'src_addr': '10.0.0.5', 'dst_addr': '10.0.0.1'},
+    #  ]
+    # To:
+    #  [10.0.0.1, 10.0.0.5, 10.0.0.3, 10.0.0.2]
+    def traceback(self, connections):
+        print(f'[DEBUG::Traceback] connections: {connections}')
+        infected_addrs = ["10.0.0.1"]
+
+        last = False
+        while not last:
+            last = True
+            for connection in connections:
+                if connection["dst_addr"] == infected_addrs[-1]:
+                    infected_addrs.append(connection["src_addr"])
+                    print('Infected addresses: {}'.format(infected_addrs))
+                    last = False
+                    break
+
+        return infected_addrs
+
+    def add_trace(self, switch, port):
+        self.traceback.append((switch, port))
+

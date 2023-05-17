@@ -7,12 +7,12 @@ net = Mininet(topo = None, controller=RemoteController)
 s1 = net.addSwitch('s1', protocols="OpenFlow13")
 s2 = net.addSwitch('s2', protocols="OpenFlow13")
 s3 = net.addSwitch('s3', protocols="OpenFlow13")
-h1 = net.addHost('h1', ip = '10.0.0.1')
-h2 = net.addHost('h2', ip = '10.0.0.2')
-h3 = net.addHost('h3', ip = '10.0.0.3')
-h4 = net.addHost('h4', ip = '10.0.0.4')
-h5 = net.addHost('h5', ip = '10.0.0.5')
-h6 = net.addHost('h6', ip = '10.0.0.6')
+h1 = net.addHost('h1', ip = '10.0.0.1', mac='00:00:00:00:00:01')
+h2 = net.addHost('h2', ip = '10.0.0.2', mac='00:00:00:00:00:02')
+h3 = net.addHost('h3', ip = '10.0.0.3', mac='00:00:00:00:00:03')
+h4 = net.addHost('h4', ip = '10.0.0.4', mac='00:00:00:00:00:04')
+h5 = net.addHost('h5', ip = '10.0.0.5', mac='00:00:00:00:00:05')
+h6 = net.addHost('h6', ip = '10.0.0.6', mac='00:00:00:00:00:06')
 
 c0 = net.addController('c0', controller=RemoteController, ip='127.0.0.1', port=6653)
 
@@ -55,6 +55,4 @@ h1.cmd("sudo /usr/sbin/sshd -D")
 /usr/sbin/sshd -D &
 mkdir /run/sshd && chmod 0755 /run/sshd
 h2 ssh albert@10.0.0.1
-
-
 '''

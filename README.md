@@ -43,7 +43,7 @@ sudo snort -i s1-snort -A unsock -l /tmp -c /etc/snort/snort.conf
 
 Start the worm:
 ```
-h2 ./brute_force_ssh.sh
+h2 ./brute_force_ssh.sh 2
 ```
 
 ### Show influxdb packets

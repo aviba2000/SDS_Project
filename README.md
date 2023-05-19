@@ -73,4 +73,8 @@ time                dst_addr dst_port host         src_addr src_port switch_id
 >
 ```
 
-
+### Reattach a host that has been removed from the network
+The idea consists of reattaching the port of the switch.
+```
+sudo ovs-vsctl add-port s1 s1-eth3
+```

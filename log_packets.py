@@ -11,9 +11,9 @@ from ryu.lib import snortlib
 
 from influxdb import InfluxDBClient
 import datetime
-
 import socket
-import datetime
+
+import subprocess
 
 # Telegraph server
 UDP_IP = "127.0.0.1"
@@ -72,10 +72,13 @@ class LogPackets(app_manager.RyuApp):
             object = self.ip_to_datapath_and_port[host]
 
             datapath_id = object['datapath']
+            if datapath_id not in self.datapaths:
+                continue
             datapath = self.datapaths[datapath_id]
             port = object['port']
 
             self.disable_port(port, datapath=datapath)
+            del self.datapaths[datapath_id]
 
         print('[%s] alertmsg: %s' % (time, msg.alertmsg[0].decode()))
     
@@ -83,15 +86,14 @@ class LogPackets(app_manager.RyuApp):
         ofp = datapath.ofproto
         ofp_parser = datapath.ofproto_parser
 
-        # Get MAC from datapath ports
+        # Get switch and port info
         hw_addr = datapath.ports[port_no].hw_addr
-        print(f'==> Disabling port {port_no} with MAC {hw_addr}')
+        port_name = datapath.ports[port_no].name.decode("utf-8")
+        switch_name = port_name.split('-')[0]
+        print(f'==> Disabling port {port_name} with MAC {hw_addr} from {switch_name}')
 
-        config = ofp.OFPPC_PORT_DOWN
-        mask = ofp.OFPPC_PORT_DOWN
-        advertise = 0
-        req = ofp_parser.OFPPortMod(datapath, port_no, hw_addr, config, mask, advertise)
-        datapath.send_msg(req)
+        subprocess.call(['ovs-vsctl', 'del-port', switch_name, port_name])
+        
         return
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)

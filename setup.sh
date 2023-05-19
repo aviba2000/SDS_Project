@@ -25,10 +25,11 @@ sudo apt install -y xterm
 echo “xterm*font: *-fixed-*-*-*-19-*” > .Xresources
 xrdb -merge ~/.Xresources
 
-# Install Mininet and Ryu
+# Install Mininet, Ryu and influxdb
 sudo pip3 install ryu mininet
 sudo pip3 uninstall eventlet
 sudo pip3 install eventlet==0.30.2
+sudo pip3 install influxdb
 
 # Install Snort
 sudo apt install snort

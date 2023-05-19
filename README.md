@@ -4,34 +4,54 @@
 
 Use ubuntu 20.04!
 
+First, clone the repo and init submodules:
+
+```bash
+git clone https://github.com/aviba2000/SDS_Project.git
+git submodule update --init --recursive
+```
+
 Execute the setup script:
 ```bash
-chmod +x setup.sh
 sudo setup.sh
 ```
 
-## How to run
-First, set up telegraf and influxdb:
-
-```
-docker compose up -d
-```
-
-Run the controller and the topology:
-```
-sudo python3 topology.py
-sudo ryu-manager log_packets.py
-```
-
+## Set up
 Set up Snort:
+
 ```
-sudo ip link add name s1-snort type dummy
-sudo ip link set s1-snort up
 cp honeypot.rules /etc/snort/rules
 ```
 
 Modify /etc/snort/snort.conf and add include $RULE_PATH/honeypot.rules.
 
+## How to run
+Running:
+
+```
+docker compose up -d
+```
+
+This will start the following containers:
+- **influxdb**: 127.0.0.1:8086
+- **telegraf**: 127.0.0.1:8094
+
+Start ryu-manager with flow manager visor:
+```
+sudo ryu-manager --observe-links flowmanager/flowmanager.py log_packets.py
+```
+
+This will start:
+- **ryu manager**: 127.0.0.1:6653
+- **flow manager visor**: http://localhost:8080/home/index.html
+
+
+Set up topology:
+```
+sudo python3 topology.py
+```
+
+Add snort:
 ```
 sudo ovs-vsctl add-port s1 s1-snort
 ```
@@ -43,7 +63,7 @@ sudo snort -i s1-snort -A unsock -l /tmp -c /etc/snort/snort.conf
 
 Start the worm:
 ```
-h2 ./brute_force_ssh.sh 2
+mininet> h2 ./brute_force_ssh.sh 2
 ```
 
 ### Show influxdb packets

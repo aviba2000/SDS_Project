@@ -11,13 +11,7 @@ from ryu.lib import snortlib
 
 from influxdb import InfluxDBClient
 import datetime
-import socket
-
 import subprocess
-
-# Telegraph server
-UDP_IP = "127.0.0.1"
-UDP_PORT = 8094
 
 # Snort alerts
 # alert tcp any any -> 10.0.0.1 22 (msg:"SSH attempt"; sid:1000001)
@@ -68,29 +62,27 @@ class LogPackets(app_manager.RyuApp):
 
     @set_ev_cls(snortlib.EventAlert, MAIN_DISPATCHER)
     def _dump_alert(self, ev):
-        print('[DEBUG] _dump_alert()')
         msg = ev.msg
         time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        ##############################################
         # Create Traceback
-        # traceAlgorithm = TraceBack("10.0.0.1")
-        # test = traceAlgorithm.get_last_connection()
-        ##############################################
+        if SSH_ALERT in msg.alertmsg[0].decode():
+            traceAlgorithm = TraceBack("10.0.0.1")
+            infected_hosts = traceAlgorithm.get_last_connection()
 
-        infected_hosts = ['10.0.0.1', '10.0.0.3']
+            for host in infected_hosts:
+                object = self.ip_to_datapath_and_port[host]
 
-        for host in infected_hosts:
-            object = self.ip_to_datapath_and_port[host]
+                datapath_id = object['datapath']
+                if datapath_id not in self.datapaths:
+                    continue
 
-            datapath_id = object['datapath']
-            if datapath_id not in self.datapaths:
-                continue
-            datapath = self.datapaths[datapath_id]
-            port = object['port']
+                datapath = self.datapaths[datapath_id]
+                port = object['port']
+                if port not in datapath.ports:
+                    continue
 
-            self.disable_port(port, datapath=datapath)
-            del self.datapaths[datapath_id]
+                self.disable_port(port, datapath=datapath)
 
         print('[%s] alertmsg: %s' % (time, msg.alertmsg[0].decode()))
     
@@ -270,11 +262,32 @@ class LogPackets(app_manager.RyuApp):
         msg = PACKET_MSG % (dpid, src_mac, src_addr, src_port, dst_mac, dst_addr, dst_port, timestamp)
 
         #############################
-        # Send the packet to Telegraf.
+        # Send the packet to Influxdb.
         #############################
-        # self.logger.info(msg)
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.sendto(msg.encode(), (UDP_IP, UDP_PORT))
+        # Send packet to telegraph and wait for response.
+        try:
+            client = InfluxDBClient(host='localhost', port=8086)
+
+            # Use RYU as the database
+            client.switch_database('RYU')
+
+            # Write the packet to the database
+            msg = {
+                "measurement": "unhandled_packets",
+                "fields": {
+                    'time': timestamp,
+                    'dst_addr': dst_addr,
+                    'dst_mac': dst_mac,
+                    'dst_port': dst_port,
+                    'src_addr': src_addr,
+                    'src_mac': src_mac,
+                    'src_port': src_port,
+                    'switch_id': dpid
+                }
+            }
+            client.write_points([msg])
+        except Exception as e:
+            print(f'Error sending packet to influxdb: {e}')
 
 
 # Create a Traceback class to store the traceback information.
@@ -314,7 +327,9 @@ class TraceBack():
             flows.append(point)
 
         unique_flows = self.get_unique_connections(flows)
+        print(f'[DEBUG::unique_flows] {unique_flows}')
         infected_addrs = self.traceback(unique_flows)
+        print(f'[DEBUG::infected] {infected_addrs}')
         
         return infected_addrs
     
@@ -346,7 +361,6 @@ class TraceBack():
     # To:
     #  [10.0.0.1, 10.0.0.5, 10.0.0.3, 10.0.0.2]
     def traceback(self, connections):
-        print(f'[DEBUG::Traceback] connections: {connections}')
         nodes = {}
         honeypot_addr = "10.0.0.1"
         infected_addrs = [honeypot_addr]
@@ -365,6 +379,9 @@ class TraceBack():
                 
             # src node is a parent of the dst node
             dst_node.parents[src_node.ip] = src_node
+        
+        if not honeypot_addr in nodes:
+            return []
 
         for infected_ip in infected_addrs:
             # Store the parents of the infected node

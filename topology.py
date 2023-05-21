@@ -1,3 +1,4 @@
+import subprocess
 from mininet.net import Mininet
 from mininet.cli import CLI
 from mininet.node import RemoteController
@@ -37,22 +38,13 @@ for h in net.hosts:
 	h.cmd('[ ! -d "/run/sshd" ] && mkdir /run/sshd && chmod 0755 /run/sshd')
 	h.cmd("/usr/sbin/sshd -D &")
 
-
 net.start()
+net.pingAll()
+
+# Subprocess
+code = subprocess.call(["ovs-vsctl", "add-port", "s1", "s1-snort"])
+print("Return code: ", code)
+
+# Start CLI mininet
 CLI(net)
 net.stop()
-'''
-h1.cmd('[ ! -d "/run/sshd" ] && mkdir /run/sshd && chmod 0755 /run/sshd')
-h1.cmd('useradd h1 -p h1')
-h1.cmd('su h1')
-# h1.cmd("/usr/sbin/sshd -D &")
-h1.cmd("sudo /usr/sbin/sshd -D")
-
-
-
-[ ! -d "/run/sshd" ] && mkdir /run/sshd && chmod 0755 /run/sshd
-
-/usr/sbin/sshd -D &
-mkdir /run/sshd && chmod 0755 /run/sshd
-h2 ssh albert@10.0.0.1
-'''

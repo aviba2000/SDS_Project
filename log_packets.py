@@ -67,8 +67,10 @@ class LogPackets(app_manager.RyuApp):
 
         # Create Traceback
         if SSH_ALERT in msg.alertmsg[0].decode():
+            print('[%s] alertmsg: %s' % (time, msg.alertmsg[0].decode()))
             traceAlgorithm = TraceBack("10.0.0.1")
             infected_hosts = traceAlgorithm.get_last_connection()
+            print(f'==> Infected hosts: {infected_hosts}')
 
             for host in infected_hosts:
                 object = self.ip_to_datapath_and_port[host]
@@ -84,7 +86,6 @@ class LogPackets(app_manager.RyuApp):
 
                 self.disable_port(port, datapath=datapath)
 
-        print('[%s] alertmsg: %s' % (time, msg.alertmsg[0].decode()))
     
     def disable_port(self, port_no, datapath):
         ofp = datapath.ofproto

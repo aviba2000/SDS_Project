@@ -5,10 +5,12 @@ for port in "${allPorts[@]}"
 do
   switch=$(echo "$port" | cut -d '-' -f 1)
   # Remove s{x}-eth{x} interfaces from system
-  # If -f specied, remove port from switch
+  # If -f specied, remove port from system
   if [ "$1" == "-f" ]; then
-    sudo ovs-vsctl del-port "$switch" "$port" 2> /dev/null
+    ip link set "$port" down
+    ip link delete "$port"
   fi
+
   
   ovs-vsctl add-port "$switch" "$port"
 done

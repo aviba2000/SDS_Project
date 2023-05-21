@@ -327,9 +327,7 @@ class TraceBack():
             flows.append(point)
 
         unique_flows = self.get_unique_connections(flows)
-        print(f'[DEBUG::unique_flows] {unique_flows}')
         infected_addrs = self.traceback(unique_flows)
-        print(f'[DEBUG::infected] {infected_addrs}')
         
         return infected_addrs
     
